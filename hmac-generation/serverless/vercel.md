@@ -117,3 +117,96 @@ curl --request POST \
 ```
 
 In conclusion, Vercel functions offer a convenient and secure way to generate HMAC signatures for use in serverless applications. By leveraging JWTs for authentication and HMAC generation, you can create a stateless and secure authentication system for your serverless API endpoints.
+
+## Other runtimes
+
+<details>
+  <summary>Go</summary>
+
+Create `api/hmac.go` and paste the following code:
+
+```go
+package handler
+
+import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"net/http"
+	"os"
+	"strings"
+
+	"github.com/dgrijalva/jwt-go"
+)
+
+// JWTData represents the JWT payload
+type JWTData struct {
+	Email string `json:"email"`
+}
+
+// HMACResponse represents the HMAC response
+type HMACResponse struct {
+	HMAC string `json:"hmac"`
+}
+
+// Error represents an error response
+type Error struct {
+	Error string `json:"error"`
+}
+
+// GenerateHMAC is the function to generate HMAC using Vercel functions
+func GenerateHMAC(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(Error{Error: "Unauthorized"})
+		return
+	}
+
+	authToken := strings.TrimPrefix(authHeader, "Bearer ")
+
+	claims := &JWTData{}
+	token, err := jwt.ParseWithClaims(authToken, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(os.Getenv("AUTH_TOKEN")), nil
+	})
+
+	if err != nil || !token.Valid {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(Error{Error: "Unauthorized"})
+		return
+	}
+
+	mac := hmac.New(sha256.New, []byte(os.Getenv("CHATWOOT_HMAC_SECRET")))
+	mac.Write([]byte(claims.Email))
+	hmacSignature := hex.EncodeToString(mac.Sum(nil))
+
+	hmacResponse := HMACResponse{
+		HMAC: hmacSignature,
+	}
+	json.NewEncoder(w).Encode(hmacResponse)
+}
+```
+
+In case you wanna pin your go runtime, create a vercel.json file
+
+```json
+{
+  "functions": {
+    "api/hmac.go": {
+      "runtime": "go@1.16"
+    }
+  }
+}
+```
+
+</details>
+
+## References
+
+- [Chatwoot Identity Validation](https://www.chatwoot.com/docs/product/channels/live-chat/sdk/identity-validation/)
+- [Vercel Serverless](https://vercel.com/docs/concepts/functions/serverless-functions)
+- [JWT](https://jwt.io/introduction)
+- [Vercel CLI](https://vercel.com/docs/cli)
