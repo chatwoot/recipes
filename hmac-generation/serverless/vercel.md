@@ -63,6 +63,36 @@ export default async function generateHMAC(
 }
 ```
 
+<details>
+  <summary>Using JS</summary>
+
+```javascript
+const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+
+const CHATWOOT_HMAC_SECRET = process.env.CHATWOOT_HMAC_SECRET;
+const AUTH_TOKEN = process.env.AUTH_TOKEN;
+
+module.exports = async (req, res) => {
+  try {
+    const token = req.headers.authorization || "";
+    const jwtData = jwt.verify(token, AUTH_TOKEN);
+
+    const hmac = crypto
+      .createHmac("sha256", CHATWOOT_HMAC_SECRET)
+      .update(jwtData.email)
+      .digest("hex");
+
+    res.status(200).json({ hmac });
+  } catch (err) {
+    console.error(err);
+    res.status(401).json({ error: "Unauthorized" });
+  }
+};
+```
+
+</details>
+
 ### Setting up the environment variables
 
 In order to keep sensitive information secure, it's essential to use environment variables for storing secrets such as the Chatwoot HMAC secret and authentication token. These environment variables will be available to your Vercel functions during execution but won't be exposed in your source code, reducing the risk of accidental leaks.
@@ -117,92 +147,6 @@ curl --request POST \
 ```
 
 In conclusion, Vercel functions offer a convenient and secure way to generate HMAC signatures for use in serverless applications. By leveraging JWTs for authentication and HMAC generation, you can create a stateless and secure authentication system for your serverless API endpoints.
-
-## Other runtimes
-
-<details>
-  <summary>Go</summary>
-
-Create `api/hmac.go` and paste the following code:
-
-```go
-package handler
-
-import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
-	"net/http"
-	"os"
-	"strings"
-
-	"github.com/dgrijalva/jwt-go"
-)
-
-// JWTData represents the JWT payload
-type JWTData struct {
-	Email string `json:"email"`
-}
-
-// HMACResponse represents the HMAC response
-type HMACResponse struct {
-	HMAC string `json:"hmac"`
-}
-
-// Error represents an error response
-type Error struct {
-	Error string `json:"error"`
-}
-
-// GenerateHMAC is the function to generate HMAC using Vercel functions
-func GenerateHMAC(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(Error{Error: "Unauthorized"})
-		return
-	}
-
-	authToken := strings.TrimPrefix(authHeader, "Bearer ")
-
-	claims := &JWTData{}
-	token, err := jwt.ParseWithClaims(authToken, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(os.Getenv("AUTH_TOKEN")), nil
-	})
-
-	if err != nil || !token.Valid {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(Error{Error: "Unauthorized"})
-		return
-	}
-
-	mac := hmac.New(sha256.New, []byte(os.Getenv("CHATWOOT_HMAC_SECRET")))
-	mac.Write([]byte(claims.Email))
-	hmacSignature := hex.EncodeToString(mac.Sum(nil))
-
-	hmacResponse := HMACResponse{
-		HMAC: hmacSignature,
-	}
-	json.NewEncoder(w).Encode(hmacResponse)
-}
-```
-
-In case you wanna pin your go runtime, create a vercel.json file
-
-```json
-{
-  "functions": {
-    "api/hmac.go": {
-      "runtime": "go@1.16"
-    }
-  }
-}
-```
-
-</details>
 
 ## References
 
