@@ -4,6 +4,9 @@ HMAC generation and verification should only happen in authenticated context. Ho
 
 JWT is an open standard that defines a compact and self-contained way for securely transmitting information between parties as a JSON object. It consists of three parts: a header, a payload, and a signature. The header and payload are Base64Url encoded JSON objects, while the signature is used to verify the authenticity of the message. Unlike traditional sessions, JWTs are stateless, meaning that all of the necessary information is contained within the token itself.
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fchatwoot%2Frecipes%2Ftree%2Fmain%2Fhmac-generation%2Fserverless%2Fvercel&env=CHATWOOT_HMAC_SECRET,AUTH_TOKEN&project-name=chatwoot&repository-name=chatwoot-hmac-verification)
+
+
 ### How Vercel allows functions in the API folder
 
 Vercel allows developers to create serverless functions that can be accessed through API endpoints. These functions can be written in a variety of languages, including Node.js, Python, and Go. In Vercel, these functions are located in the api folder and are automatically deployed as serverless functions when the project is deployed. This allows developers to create powerful APIs without having to worry about server infrastructure.
